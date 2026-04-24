@@ -1,19 +1,8 @@
-import { Redis } from "@upstash/redis";
+import { kv } from "@vercel/kv";
 import PostForm from "./post-form";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
-
-const redis = new Redis({
-  url:
-    process.env.UPSTASH_REDIS_REST_URL ??
-    process.env.KV_REST_API_URL ??
-    "",
-  token:
-    process.env.UPSTASH_REDIS_REST_TOKEN ??
-    process.env.KV_REST_API_TOKEN ??
-    "",
-});
 
 type Post = {
   id: string;
@@ -27,7 +16,7 @@ const POSTS_KEY = "posts:all";
 
 async function getPosts(): Promise<Post[]> {
   try {
-    return (await redis.lrange<Post>(POSTS_KEY, 0, -1)) ?? [];
+    return (await kv.lrange<Post>(POSTS_KEY, 0, -1)) ?? [];
   } catch {
     return [];
   }
@@ -93,7 +82,7 @@ export default async function HomePage() {
       </section>
 
       <footer className="mt-10 text-center text-xs text-slate-400">
-        Next.js + Upstash Redis · deep-interview → autopilot
+        Next.js + Vercel KV · deep-interview → autopilot
       </footer>
     </main>
   );
