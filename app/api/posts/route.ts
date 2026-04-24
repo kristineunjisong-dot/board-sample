@@ -1,8 +1,19 @@
 import { NextResponse } from "next/server";
-import { kv } from "@vercel/kv";
+import { Redis } from "@upstash/redis";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+const redis = new Redis({
+  url:
+    process.env.UPSTASH_REDIS_REST_URL ??
+    process.env.KV_REST_API_URL ??
+    "",
+  token:
+    process.env.UPSTASH_REDIS_REST_TOKEN ??
+    process.env.KV_REST_API_TOKEN ??
+    "",
+});
 
 type Post = {
   id: string;
@@ -15,8 +26,12 @@ type Post = {
 const POSTS_KEY = "posts:all";
 
 export async function GET() {
-  const posts = (await kv.lrange<Post>(POSTS_KEY, 0, -1)) ?? [];
-  return NextResponse.json({ posts });
+  try {
+    const posts = (await redis.lrange<Post>(POSTS_KEY, 0, -1)) ?? [];
+    return NextResponse.json({ posts });
+  } catch {
+    return NextResponse.json({ posts: [] });
+  }
 }
 
 export async function POST(request: Request) {
@@ -63,7 +78,14 @@ export async function POST(request: Request) {
     createdAt: Date.now(),
   };
 
-  await kv.lpush(POSTS_KEY, post);
+  try {
+    await redis.lpush(POSTS_KEY, post);
+  } catch {
+    return NextResponse.json(
+      { error: "저장소 연결이 필요합니다 (Upstash Redis)." },
+      { status: 503 },
+    );
+  }
 
   return NextResponse.json({ post }, { status: 201 });
 }
